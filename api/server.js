@@ -79,4 +79,4 @@ function sendMessageToAllClients(message) {
     });
 }
 
-export default wss;
+export default app;
