@@ -1,6 +1,13 @@
 const WebSocket = require('ws');
 let { v4 } = require("uuid");
 
+let app = require("express")();
+
+app.get("/", (req, res) => {
+    res.send("Done");
+})
+app.listen(3000);
+
 // Create WebSocket server on port 8080
 const wss = new WebSocket.Server({ port: 8080 });
 // Connection event handler
