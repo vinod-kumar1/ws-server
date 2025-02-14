@@ -9,7 +9,7 @@ app.get("/", (req, res) => {
 app.listen(3000);
 
 // Create WebSocket server on port 8080
-const wss = new WebSocket.Server({ port: 8080 });
+const wss = new WebSocket.Server({ noServer: true });
 // Connection event handler
 let publicClients = new Set();
 
