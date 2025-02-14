@@ -1,41 +1,53 @@
-const WebSocket = require('ws');
-let { v4 } = require("uuid");
+import { WebSocketServer } from 'ws';
+import { v4 as uuidv4 } from 'uuid';
 
-export default function Server(req, res) {
+// Define the WebSocket server function
+export default function handler(req, res) {
+    if (req.method === 'GET') {
+        // WebSocket server setup
+        const wss = new WebSocketServer({ noServer: true });
 
-    if (req.method == "GET") {
-        // Create WebSocket server on port 8080
-        const wss = new WebSocket.Server({ noServer: true });
-        // Connection event handler
+        // Array to track connected clients
         let publicClients = new Set();
 
+        // WebSocket connection handler
         wss.on('connection', (ws) => {
-            //  listen to the incomming messages
+            console.log('New WebSocket connection established');
+            let clientId;
+
+            // Listen for incoming messages
             ws.on('message', (message) => {
                 let msg;
 
                 try {
                     msg = JSON.parse(message); // Parse incoming message safely
                 } catch (err) {
-
                     console.error('Error parsing message:', err);
                     return; // If there's an error parsing, just return
                 }
 
+                // Handle message types
                 switch (msg.type) {
-                    case "id":
-                        console.log("New client connected: " + msg.id);
-                        clientId = v4(msg.id);
+                    case 'id':
+                        clientId = uuidv4(); // Generate a new client ID
                         ws.client = clientId;
-                        publicClients.add(clientId)
-                        wss.clients.forEach(ws => ws.send(JSON.stringify({ type: "newClient", client: Array.from(publicClients) })));
+                        publicClients.add(clientId); // Add to the client set
+                        broadcastClients(publicClients); // Broadcast updated client list
                         break;
 
-                    case "message":
-                        !message.client ? sendMessageToAllClients(msg.message) : sendMessageToClient(msg);
+                    case 'message':
+                        // Send message to specific client or broadcast
+                        if (msg.client) {
+                            sendMessageToClient(msg);  // Send to specific client
+                        } else {
+                            sendMessageToAllClients(msg.message);  // Broadcast to all
+                        }
                         break;
-                    case "close":
+
+                    case 'close':
+                        // Handle client disconnection
                         publicClients.delete(msg.client);
+                        break;
 
                     default:
                         console.log('Unknown message type:', msg.type);
@@ -49,42 +61,51 @@ export default function Server(req, res) {
             });
         });
 
-        req.socket.on("upgrade", (req, socket, head) => {
-            wss.handleUpgrade(req, socket, head, ws => {
-                ws.emit("connection", ws, req);
-            })
-        })
-        res.status(101).send("WS server ready");
-
-        console.log('WebSocket server is running on ws://localhost:8080');
-
-        function sendMessageToClient({ message, client, name }) {
-            wss.clients.forEach(cl => {
-                // console.log(client, cl.client, "nc-l");
-                if (cl.client == client) {
-                    cl.send(JSON.stringify({ type: "message", message: message, name: name }));
-                }
+        // Upgrade HTTP request to WebSocket
+        req.socket.on('upgrade', (req, socket, head) => {
+            wss.handleUpgrade(req, socket, head, (ws) => {
+                wss.emit('connection', ws, req);
             });
-        }
+        });
 
-        function closeDisconnectedClients(closeClient) {
-            wss.clients.forEach((client) => {
-                if (client.client == closeClient) publicClients.delete(client);
-            })
-        }
+        // Send a response to indicate the WebSocket server is ready
+        res.status(101).send('WebSocket server is ready');
 
-        // Function to send a message from the server to all clients
-        function sendMessageToAllClients(message) {
-            wss.clients.forEach(client => {
-                if (client.readyState === WebSocket.OPEN) {
-                    client.send(JSON.stringify({ type: "message", message: message }));
-                }
-            });
-        }
-
-
+        console.log('WebSocket server is ready');
+    } else {
+        // Handle other HTTP requests
+        res.status(200).send('WebSocket server is running');
     }
-    else {
-        res.status(200).send('WebSocket server is up and running');
+
+    // Function to broadcast the list of clients to all WebSocket clients
+    function broadcastClients(clients) {
+        wss.clients.forEach((ws) => {
+            ws.send(JSON.stringify({ type: 'newClient', clients: Array.from(clients) }));
+        });
+    }
+
+    // Function to send message to a specific client
+    function sendMessageToClient({ message, client, name }) {
+        wss.clients.forEach((cl) => {
+            if (cl.client === client) {
+                cl.send(JSON.stringify({ type: 'message', message, name }));
+            }
+        });
+    }
+
+    // Function to send message to all connected clients
+    function sendMessageToAllClients(message) {
+        wss.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({ type: 'message', message }));
+            }
+        });
+    }
+
+    // Handle disconnection of clients
+    function closeDisconnectedClients(clientId) {
+        publicClients.forEach((client) => {
+            if (client === clientId) publicClients.delete(client);
+        });
     }
 }
