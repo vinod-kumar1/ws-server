@@ -25,10 +25,7 @@
 
       <div id="container" class="chat-box" style="display: none">
         <h2 id="user-name"></h2>
-        <div id="msg-box">
-          <div class="messages" id="server"></div>
-          <div class="messages" id="client"></div>
-        </div>
+        <div id="msg-box"></div>
         <div class="input-area">
           <input
             type="text"
@@ -46,8 +43,7 @@
 
     <script>
       function connect() {
-        let serverMessage = document.getElementById("server");
-        let clientMessage = document.getElementById("client");
+        let messageBox = document.getElementById("msg-box");
         let clientId;
         let username = document.getElementById("name").value;
         document.getElementById("user-name").innerText = username;
@@ -81,7 +77,7 @@
               let ele = document.createElement("p");
               ele.className = "server-msg";
               ele.innerText = `${name} : ${message}`;
-              serverMessage.appendChild(ele);
+              messageBox.appendChild(ele);
               break;
 
             case "newClient":
@@ -91,8 +87,8 @@
               break;
 
             case "updateClients":
-              let { allClients } = msg;
-              updateClientList(allClients);
+              let { details } = msg;
+              updateClientList(details);
               break;
 
             case "limit":
@@ -106,14 +102,26 @@
           document.getElementById("receiver").innerHTML = "";
         }
 
-        function updateClientList(clients) {
+        function updateClientList(details) {
           removeAllChilds();
-          for (let i = 0; i < clients.length; i++) {
-            let client = clients[i];
+          let defaultOpt = document.createElement("option");
+          defaultOpt.text = "Select the Receiver";
+          document.getElementById("receiver").appendChild(defaultOpt);
+
+          let sendAll = document.createElement("option");
+          sendAll.text = "Send Everyone";
+          sendAll.className = "send-all";
+          sendAll.value = "sendAll";
+
+          for (let i = 0; i < details.length; i++) {
+            let client = details[i].id;
             let opt = document.createElement("option");
             opt.className = client;
             opt.value = client;
-            opt.text = ws.client == client ? client + " (You)" : client;
+            opt.text =
+              ws.client == client
+                ? details[i].name + " (You)"
+                : details[i].name;
             document.getElementById("receiver").appendChild(opt);
           }
         }
@@ -134,7 +142,7 @@
           let ele = document.createElement("p");
           ele.className = "client-msg";
           ele.innerText = "You: " + message.value;
-          clientMessage.appendChild(ele);
+          messageBox.appendChild(ele);
           message.value = "";
         });
 

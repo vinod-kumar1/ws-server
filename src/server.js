@@ -11,6 +11,7 @@ const server = http.createServer((req, res) => {
 // Create WebSocket server
 const wss = new WebSocket.Server({ server });
 let publicClients = new Set();
+let publicClienDetails = new Set();
 
 wss.on("connection", (ws) => {
   console.log("A client connected");
@@ -30,6 +31,7 @@ wss.on("connection", (ws) => {
         ws.client = clientId;
         ws.name = msg.clientname;
         publicClients.add(clientId);
+        publicClienDetails.add({ name: msg.clientname, id: clientId });
         ws.send(
           JSON.stringify({
             type: "newClient",
@@ -50,11 +52,12 @@ wss.on("connection", (ws) => {
   });
 
   function sendMessageToAll() {
+    console.log("public, ", publicClienDetails);
     wss.clients.forEach((client) => {
       client.send(
         JSON.stringify({
           type: "updateClients",
-          allClients: Array.from(publicClients),
+          details: Array.from(publicClienDetails),
           name: client.name,
         })
       );
@@ -84,7 +87,7 @@ wss.on("connection", (ws) => {
         client.send(
           JSON.stringify({
             type: "updateClients",
-            allClients: Array.from(publicClients),
+            details: Array.from(publicClienDetails),
           })
         );
       }
