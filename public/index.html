@@ -1,20 +1,151 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Chat App</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Websocket</title>
-    <style>
-        * {
-            background-color: rgb(15, 15, 32);
-            color: white;
+  <body>
+    <div class="chat-container">
+      <h1>Chat App</h1>
+      <p><i id="server-name"></i></p>
+
+      <div class="server-connect">
+        <input
+          value="Vinod"
+          type="text"
+          id="name"
+          placeholder="Enter Your name"
+        />
+        <button id="connect" onClick="connect()">Connect to Server</button>
+      </div>
+
+      <div id="container" class="chat-box" style="display: none">
+        <h2 id="user-name"></h2>
+        <div id="msg-box">
+          <div class="messages" id="server"></div>
+          <div class="messages" id="client"></div>
+        </div>
+        <div class="input-area">
+          <input
+            type="text"
+            id="messageInput"
+            placeholder="Type your message..."
+            autocomplete="off"
+          />
+          <button id="send-msg">Send</button>
+          <select name="select-receiver" id="receiver">
+            <option value="" selected="true">Send to</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function connect() {
+        let serverMessage = document.getElementById("server");
+        let clientMessage = document.getElementById("client");
+        let clientId;
+        let username = document.getElementById("name").value;
+        document.getElementById("user-name").innerText = username;
+        document.getElementsByClassName("server-connect")[0].style.display =
+          "none";
+
+        let ws = new WebSocket("ws://localhost:8080");
+        ws.onopen = function (e) {
+          ws.send(
+            JSON.stringify({
+              type: "newClient",
+              clientname: username,
+            })
+          );
+        };
+        document.querySelector("#connect").disabled = true;
+        document.querySelector("#container").style.display = "block";
+
+        // Receive message from server
+        ws.onmessage = function (mg) {
+          let msg = mg.data;
+
+          if (typeof msg == "string") msg = JSON.parse(msg);
+          switch (msg.type) {
+            case "welcome":
+              console.log(mg.data);
+              break;
+
+            case "message":
+              let { message, name } = msg;
+              let ele = document.createElement("p");
+              ele.className = "server-msg";
+              ele.innerText = `${name} : ${message}`;
+              serverMessage.appendChild(ele);
+              break;
+
+            case "newClient":
+              let { client } = msg;
+              ws.client = client;
+              clientId = client;
+              break;
+
+            case "updateClients":
+              let { allClients } = msg;
+              updateClientList(allClients);
+              break;
+
+            case "limit":
+              alert("Max clients limit exceeded...");
+              window.close();
+              break;
+          }
+        };
+
+        function removeAllChilds() {
+          document.getElementById("receiver").innerHTML = "";
         }
-    </style>
-</head>
 
-<body>
-    Welcome to Websocket Server
-</body>
+        function updateClientList(clients) {
+          removeAllChilds();
+          for (let i = 0; i < clients.length; i++) {
+            let client = clients[i];
+            let opt = document.createElement("option");
+            opt.className = client;
+            opt.value = client;
+            opt.text = ws.client == client ? client + " (You)" : client;
+            document.getElementById("receiver").appendChild(opt);
+          }
+        }
 
+        // Send message from client
+        document.querySelector("#send-msg").addEventListener("click", () => {
+          let message = document.getElementById("messageInput");
+
+          ws.send(
+            JSON.stringify({
+              type: "message",
+              message: message.value,
+              receiver: document.getElementById("receiver")?.value,
+              name: username,
+              sendAll: false,
+            })
+          );
+          let ele = document.createElement("p");
+          ele.className = "client-msg";
+          ele.innerText = "You: " + message.value;
+          clientMessage.appendChild(ele);
+          message.value = "";
+        });
+
+        ws.onerror = function (err) {
+          console.dir("vin", err);
+        };
+
+        ws.onclose = function (e) {
+          ws.send(JSON.stringify({ type: "close", client: ws.client }));
+        };
+      }
+    </script>
+  </body>
 </html>
