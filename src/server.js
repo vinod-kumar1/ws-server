@@ -1,3 +1,4 @@
+// This is the Serever code which I've hosted on RENDER. 
 const WebSocket = require("ws");
 const http = require("http");
 let { v4 } = require("uuid");
