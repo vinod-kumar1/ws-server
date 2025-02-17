@@ -39,20 +39,23 @@ wss.on("connection", (ws) => {
             message: "New client created",
           })
         );
-        sendMessageToAll();
+        updateAllClients();
         break;
 
       case "message":
         let { receiver, message, sendAll, name } = msg;
-        receiver && !sendAll
-          ? sendMessageToClient(receiver, message, name)
-          : sendMessageToAll(message);
+        sendMessageToClient(receiver, message, name);
+        break;
+      case "sendAll":
+        let gloablMessage = msg.message;
+        let senderId = msg.sender;
+        let senderName = msg.name;
+        sendMessageToAll(gloablMessage, senderId, senderName);
         break;
     }
   });
 
-  function sendMessageToAll() {
-    console.log("public, ", publicClienDetails);
+  function updateAllClients() {
     wss.clients.forEach((client) => {
       client.send(
         JSON.stringify({
@@ -62,6 +65,20 @@ wss.on("connection", (ws) => {
         })
       );
     });
+  }
+
+  function sendMessageToAll(message, senderId, senderName) {
+    let allClients = Array.from(wss.clients);
+    for (let i = 0; i < allClients.length; i++) {
+      if (allClients[i].client == senderId) continue;
+      allClients[i].send(
+        JSON.stringify({
+          type: "message",
+          name: senderName,
+          message: message,
+        })
+      );
+    }
   }
 
   function sendMessageToClient(clientId, message, name) {

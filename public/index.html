@@ -112,6 +112,7 @@
           sendAll.text = "Send Everyone";
           sendAll.className = "send-all";
           sendAll.value = "sendAll";
+          document.getElementById("receiver").appendChild(sendAll);
 
           for (let i = 0; i < details.length; i++) {
             let client = details[i].id;
@@ -129,16 +130,29 @@
         // Send message from client
         document.querySelector("#send-msg").addEventListener("click", () => {
           let message = document.getElementById("messageInput");
-
-          ws.send(
-            JSON.stringify({
-              type: "message",
-              message: message.value,
-              receiver: document.getElementById("receiver")?.value,
-              name: username,
-              sendAll: false,
-            })
-          );
+          let choosenReceiver = document.getElementById("receiver").value;
+          if (choosenReceiver == "sendAll") {
+            ws.send(
+              JSON.stringify({
+                type: "sendAll",
+                message: message.value,
+                receiver: "",
+                name: username,
+                sendAll: true,
+                sender: clientId,
+              })
+            );
+          } else {
+            ws.send(
+              JSON.stringify({
+                type: "message",
+                message: message.value,
+                receiver: choosenReceiver,
+                name: username,
+                sendAll: false,
+              })
+            );
+          }
           let ele = document.createElement("p");
           ele.className = "client-msg";
           ele.innerText = "You: " + message.value;
