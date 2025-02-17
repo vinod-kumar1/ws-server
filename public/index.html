@@ -50,7 +50,7 @@
         document.getElementsByClassName("server-connect")[0].style.display =
           "none";
 
-        let ws = new WebSocket("ws://localhost:8080");
+        let ws = new WebSocket("https://ws-server-do56.onrender.com");
         ws.onopen = function (e) {
           ws.send(
             JSON.stringify({
